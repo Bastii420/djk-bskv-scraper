@@ -1,0 +1,26 @@
+name: Automatischer BSKV Scraper
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+    - cron: '0 16 * * 0'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v3
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Abhängigkeiten installieren
+        run: npm install
+
+      - name: Scraper ausführen
+        run: node scraper.js --test
