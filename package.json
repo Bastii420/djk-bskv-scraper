@@ -1,0 +1,14 @@
+{
+  "name": "djk-bskv-scraper",
+  "version": "1.0.0",
+  "description": "Backend Scraper for BSKV Table",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js",
+    "test": "node scraper.js --test"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "puppeteer": "^22.0.0"
+  }
+}
