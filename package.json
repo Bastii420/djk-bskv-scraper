@@ -5,7 +5,8 @@
   "main": "scraper.js",
   "scripts": {
     "start": "node scraper.js",
-    "test": "node scraper.js --test"
+    "test": "node scraper.js --test",
+    "check-request": "node scraper.js --check-request"
   },
   "dependencies": {
     "node-cron": "^3.0.3",
