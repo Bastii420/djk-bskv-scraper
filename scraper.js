@@ -23,8 +23,17 @@ const LEAGUES = [
 ];
 
 const TARGET_URL = 'https://bskv.sportwinner.de/';
-const OUTPUT_FILE = path.join(__dirname, '..', 'bskv_data.json'); 
+const OUTPUT_FILE = path.join(__dirname, 'bskv_data.json'); 
 const FIREBASE_BASE_URL = 'https://djk-abenberg-default-rtdb.europe-west1.firebasedatabase.app';
+
+function nowMeta(extra = {}) {
+  const now = new Date();
+  return {
+    lastAttempt: now.toISOString(),
+    lastAttemptMs: now.getTime(),
+    ...extra
+  };
+}
 
 async function firebaseGet(pathName) {
   const response = await fetch(`${FIREBASE_BASE_URL}/${pathName}.json`);
@@ -252,6 +261,12 @@ async function scrapeTable() {
 
     if (leagueCount === 0 || !hasUsefulData) {
       console.error(`[Fehler] Keine verwertbaren BSKV-Daten gefunden. Firebase wird nicht überschrieben.`);
+      await firebasePut('bskv_meta', nowMeta({
+        status: 'empty',
+        message: 'Noch keine verwertbaren BSKV-Saisondaten verfuegbar.',
+        leagueCount,
+        lastResult: 'empty'
+      }));
       return false;
     }
 
@@ -263,16 +278,35 @@ async function scrapeTable() {
     let firebaseUploadOk = false;
     try {
       await firebasePut('bskv_data', allLeaguesData);
+      await firebasePut('bskv_meta', nowMeta({
+        status: 'success',
+        message: 'BSKV-Daten erfolgreich aktualisiert.',
+        leagueCount,
+        lastSuccessfulUpdate: new Date().toISOString(),
+        lastSuccessfulUpdateMs: Date.now(),
+        lastResult: 'success'
+      }));
       firebaseUploadOk = true;
       console.log(`[Erfolg] Daten erfolgreich an Firebase Cloud Datenbank gesendet!`);
     } catch (e) {
       console.error(`[Fehler] Firebase Upload fehlgeschlagen:`, e.message);
+      await firebasePut('bskv_meta', nowMeta({
+        status: 'error',
+        message: `Firebase Upload fehlgeschlagen: ${e.message}`,
+        leagueCount,
+        lastResult: 'error'
+      })).catch(() => {});
     }
 
     return firebaseUploadOk;
     
   } catch (error) {
     console.error('Fehler beim Scrapen:', error);
+    await firebasePut('bskv_meta', nowMeta({
+      status: 'error',
+      message: `Fehler beim Scrapen: ${error.message}`,
+      lastResult: 'error'
+    })).catch(() => {});
     return false;
   } finally {
     if (browser) {
