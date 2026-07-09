@@ -23,7 +23,7 @@ const LEAGUES = [
 ];
 
 const TARGET_URL = 'https://bskv.sportwinner.de/';
-const OUTPUT_FILE = path.join(__dirname, 'bskv_data.json'); 
+const OUTPUT_FILE = path.join(__dirname, '..', 'bskv_data.json'); 
 const FIREBASE_BASE_URL = 'https://djk-abenberg-default-rtdb.europe-west1.firebasedatabase.app';
 
 async function firebaseGet(pathName) {
@@ -245,9 +245,19 @@ async function scrapeTable() {
       };
     }
 
+    const leagueCount = Object.keys(allLeaguesData).length;
+    const hasUsefulData = Object.values(allLeaguesData).some(league => {
+      return (league.standings && league.standings.length > 0) || (league.games && league.games.length > 0);
+    });
+
+    if (leagueCount === 0 || !hasUsefulData) {
+      console.error(`[Fehler] Keine verwertbaren BSKV-Daten gefunden. Firebase wird nicht überschrieben.`);
+      return false;
+    }
+
     // JSON speichern
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(allLeaguesData, null, 2));
-    console.log(`\n[Erfolg] Daten für ${Object.keys(allLeaguesData).length} Ligen lokal in ${OUTPUT_FILE} gespeichert!`);
+    console.log(`\n[Erfolg] Daten für ${leagueCount} Ligen lokal in ${OUTPUT_FILE} gespeichert!`);
 
     // Neu: An Firebase senden
     let firebaseUploadOk = false;
