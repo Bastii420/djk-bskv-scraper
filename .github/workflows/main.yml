@@ -1,26 +1,26 @@
-name: Automatischer BSKV Scraper
+name: Check BSKV scraper request
 
 on:
   schedule:
-    - cron: '0 1 * * *'
-    - cron: '0 16 * * 0'
+    - cron: "7/10 * * * *"
   workflow_dispatch:
 
 jobs:
-  scrape:
+  check-request:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Code auschecken
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Node.js einrichten
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 20
 
-      - name: Abhängigkeiten installieren
-        run: npm install
+      - name: Abhaengigkeiten installieren
+        run: npm ci
 
-      - name: Scraper ausführen
-        run: node scraper.js --test
+      - name: Manuelle Scraper-Anfrage pruefen
+        run: npm run check-request
+
