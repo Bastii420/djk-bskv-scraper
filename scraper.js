@@ -23,7 +23,34 @@ const LEAGUES = [
 ];
 
 const TARGET_URL = 'https://bskv.sportwinner.de/';
-const OUTPUT_FILE = path.join(__dirname, '..', 'bskv_data.json'); 
+const OUTPUT_FILE = path.join(__dirname, 'bskv_data.json'); 
+const FIREBASE_BASE_URL = 'https://djk-abenberg-default-rtdb.europe-west1.firebasedatabase.app';
+
+async function firebaseGet(pathName) {
+  const response = await fetch(`${FIREBASE_BASE_URL}/${pathName}.json`);
+  if (!response.ok) throw new Error(`Firebase GET fehlgeschlagen: ${response.statusText}`);
+  return response.json();
+}
+
+async function firebasePut(pathName, data) {
+  const response = await fetch(`${FIREBASE_BASE_URL}/${pathName}.json`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) throw new Error(`Firebase PUT fehlgeschlagen: ${response.statusText}`);
+  return response.json();
+}
+
+async function firebasePatch(pathName, data) {
+  const response = await fetch(`${FIREBASE_BASE_URL}/${pathName}.json`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) throw new Error(`Firebase PATCH fehlgeschlagen: ${response.statusText}`);
+  return response.json();
+}
 
 async function scrapeTable() {
   console.log(`[${new Date().toISOString()}] Starte BSKV Scraper für ${LEAGUES.length} Ligen...`);
@@ -223,23 +250,20 @@ async function scrapeTable() {
     console.log(`\n[Erfolg] Daten für ${Object.keys(allLeaguesData).length} Ligen lokal in ${OUTPUT_FILE} gespeichert!`);
 
     // Neu: An Firebase senden
+    let firebaseUploadOk = false;
     try {
-      const firebaseResponse = await fetch('https://djk-abenberg-default-rtdb.europe-west1.firebasedatabase.app/bskv_data.json', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(allLeaguesData)
-      });
-      if (firebaseResponse.ok) {
-        console.log(`[Erfolg] Daten erfolgreich an Firebase Cloud Datenbank gesendet!`);
-      } else {
-        console.error(`[Fehler] Firebase Upload fehlgeschlagen:`, firebaseResponse.statusText);
-      }
+      await firebasePut('bskv_data', allLeaguesData);
+      firebaseUploadOk = true;
+      console.log(`[Erfolg] Daten erfolgreich an Firebase Cloud Datenbank gesendet!`);
     } catch (e) {
       console.error(`[Fehler] Firebase Upload fehlgeschlagen:`, e.message);
     }
+
+    return firebaseUploadOk;
     
   } catch (error) {
     console.error('Fehler beim Scrapen:', error);
+    return false;
   } finally {
     if (browser) {
       await browser.close();
@@ -247,18 +271,65 @@ async function scrapeTable() {
   }
 }
 
+async function updateScraperRequest(request, fields) {
+  const updates = {
+    ...fields,
+    updatedAt: new Date().toISOString(),
+    updatedAtMs: Date.now()
+  };
+
+  await firebasePatch('scraper_control/latestRequest', updates);
+  if (request && request.id) {
+    await firebasePatch(`scraper_requests/${request.id}`, updates);
+  }
+}
+
+async function checkManualRequest() {
+  console.log(`[${new Date().toISOString()}] Prüfe manuelle Scraper-Anfrage...`);
+
+  const request = await firebaseGet('scraper_control/latestRequest');
+  if (!request || request.status !== 'pending') {
+    console.log('Keine offene manuelle Anfrage gefunden.');
+    return 'none';
+  }
+
+  await updateScraperRequest(request, {
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    startedAtMs: Date.now()
+  });
+
+  const ok = await scrapeTable();
+  await updateScraperRequest(request, {
+    status: ok ? 'done' : 'error',
+    finishedAt: new Date().toISOString(),
+    finishedAtMs: Date.now()
+  });
+
+  return ok ? 'done' : 'error';
+}
+
 // ==========================================
 // SCHEDULING LOGIK
 // ==========================================
 
 const isTestMode = process.argv.includes('--test');
+const isCheckRequestMode = process.argv.includes('--check-request');
 
 if (isTestMode) {
   scrapeTable();
+} else if (isCheckRequestMode) {
+  checkManualRequest()
+    .then(result => process.exit(result === 'error' ? 1 : 0))
+    .catch(error => {
+      console.error('Fehler beim Prüfen der manuellen Anfrage:', error);
+      process.exit(1);
+    });
 } else {
+  cron.schedule('*/10 * * * *', () => checkManualRequest());
   cron.schedule('0 3 * * 1-5', () => scrapeTable());
   cron.schedule('*/30 * * * 0,6', () => scrapeTable());
   console.log('BSKV-Scraper Service gestartet (Multi-Liga Modus)!');
 }
 
-module.exports = { scrapeTable };
+module.exports = { scrapeTable, checkManualRequest };
