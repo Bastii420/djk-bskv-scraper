@@ -2,6 +2,8 @@ const puppeteer = require('puppeteer');
 const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
+let firebaseAdmin = null;
+let firebaseAdminDb = null;
 
 // ==========================================
 // KONFIGURATION
@@ -26,6 +28,32 @@ const TARGET_URL = 'https://bskv.sportwinner.de/';
 const OUTPUT_FILE = path.join(__dirname, 'bskv_data.json'); 
 const FIREBASE_BASE_URL = 'https://djk-abenberg-default-rtdb.europe-west1.firebasedatabase.app';
 
+function getFirebaseAdminDb() {
+  if (firebaseAdminDb) return firebaseAdminDb;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  const databaseURL = process.env.FIREBASE_DATABASE_URL || FIREBASE_BASE_URL;
+
+  if (!projectId || !clientEmail || !privateKey) return null;
+
+  firebaseAdmin = firebaseAdmin || require('firebase-admin');
+  if (!firebaseAdmin.apps.length) {
+    firebaseAdmin.initializeApp({
+      credential: firebaseAdmin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey
+      }),
+      databaseURL
+    });
+  }
+
+  firebaseAdminDb = firebaseAdmin.database();
+  return firebaseAdminDb;
+}
+
 function nowMeta(extra = {}) {
   const now = new Date();
   return {
@@ -36,12 +64,24 @@ function nowMeta(extra = {}) {
 }
 
 async function firebaseGet(pathName) {
+  const adminDb = getFirebaseAdminDb();
+  if (adminDb) {
+    const snapshot = await adminDb.ref(pathName).once('value');
+    return snapshot.val();
+  }
+
   const response = await fetch(`${FIREBASE_BASE_URL}/${pathName}.json`);
   if (!response.ok) throw new Error(`Firebase GET fehlgeschlagen: ${response.statusText}`);
   return response.json();
 }
 
 async function firebasePut(pathName, data) {
+  const adminDb = getFirebaseAdminDb();
+  if (adminDb) {
+    await adminDb.ref(pathName).set(data);
+    return data;
+  }
+
   const response = await fetch(`${FIREBASE_BASE_URL}/${pathName}.json`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -52,6 +92,12 @@ async function firebasePut(pathName, data) {
 }
 
 async function firebasePatch(pathName, data) {
+  const adminDb = getFirebaseAdminDb();
+  if (adminDb) {
+    await adminDb.ref(pathName).update(data);
+    return data;
+  }
+
   const response = await fetch(`${FIREBASE_BASE_URL}/${pathName}.json`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
