@@ -417,7 +417,12 @@ if (isTestMode) {
   scrapeTable();
 } else if (isCheckRequestMode) {
   checkManualRequest()
-    .then(result => process.exit(result === 'error' ? 1 : 0))
+    .then(result => {
+      if (result === 'error') {
+        console.warn('Manuelle Anfrage wurde verarbeitet, aber es wurden keine neuen BSKV-Daten gespeichert. Workflow bleibt gruen, damit keine unnoetige GitHub-Mail versendet wird.');
+      }
+      process.exit(0);
+    })
     .catch(error => {
       console.error('Fehler beim Prüfen der manuellen Anfrage:', error);
       process.exit(1);
