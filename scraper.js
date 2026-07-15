@@ -36,7 +36,14 @@ function getFirebaseAdminDb() {
   const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
   const databaseURL = process.env.FIREBASE_DATABASE_URL || FIREBASE_BASE_URL;
 
-  if (!projectId || !clientEmail || !privateKey) return null;
+  const missingSecrets = [];
+  if (!projectId) missingSecrets.push('FIREBASE_PROJECT_ID');
+  if (!clientEmail) missingSecrets.push('FIREBASE_CLIENT_EMAIL');
+  if (!privateKey) missingSecrets.push('FIREBASE_PRIVATE_KEY');
+  if (missingSecrets.length) {
+    console.warn(`Firebase Admin nicht aktiv. Fehlende GitHub Secrets: ${missingSecrets.join(', ')}`);
+    return null;
+  }
 
   firebaseAdmin = firebaseAdmin || require('firebase-admin');
   if (!firebaseAdmin.apps.length) {
