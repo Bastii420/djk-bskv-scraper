@@ -316,7 +316,7 @@ async function scrapeTable() {
       console.error(`[Fehler] Keine verwertbaren BSKV-Daten gefunden. Firebase wird nicht überschrieben.`);
       await firebasePut('bskv_meta', nowMeta({
         status: 'empty',
-        message: 'Noch keine verwertbaren BSKV-Saisondaten verfuegbar.',
+        message: 'Noch keine verwertbaren BSKV-Saisondaten verfügbar.',
         leagueCount,
         lastResult: 'empty'
       }));
@@ -419,7 +419,7 @@ if (isTestMode) {
   checkManualRequest()
     .then(result => {
       if (result === 'error') {
-        console.warn('Manuelle Anfrage wurde verarbeitet, aber es wurden keine neuen BSKV-Daten gespeichert. Workflow bleibt gruen, damit keine unnoetige GitHub-Mail versendet wird.');
+        console.warn('Manuelle Anfrage wurde verarbeitet, aber es wurden keine neuen BSKV-Daten gespeichert. Workflow bleibt grün, damit keine unnötige GitHub-Mail versendet wird.');
       }
       process.exit(0);
     })
