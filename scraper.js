@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer');
 const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
+const seasonConfig = require('./season-config');
 let firebaseAdmin = null;
 let firebaseAdminDb = null;
 
@@ -14,15 +15,10 @@ let firebaseAdminDb = null;
 // und trägt diese Nummer ein, damit der Verein geladen wird.
 const KLUB_NUMMER = '10009-001';
 
-// 2. ZU SCRAPENDE LIGEN (Wie in deinem Screenshot)
-const LEAGUES = [
-  'Männer - Bezirksoberliga',
-  'Männer - Bezirksliga Süd-West',
-  'Männer - Kreisliga Süd',
-  'Männer - Kreisklasse A Süd',
-  'Frauen - Kreisliga Süd-West',
-  'Jugend U 14 - Bezirksliga'
-];
+// 2. ZU SCRAPENDE LIGEN
+// Kommt aus season-config.js, damit die Mannschaften nur noch an einer Stelle
+// pro Saison gepflegt werden müssen.
+const LEAGUES = seasonConfig.teams.map(team => team.leagueName);
 
 const TARGET_URL = 'https://bskv.sportwinner.de/';
 const OUTPUT_FILE = path.join(__dirname, 'bskv_data.json'); 

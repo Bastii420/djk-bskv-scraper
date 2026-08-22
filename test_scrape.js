@@ -43,7 +43,7 @@ async function testScrape() {
     await new Promise(r => setTimeout(r, 3000));
 
     console.log("Clicking league...");
-    const leagueName = 'Männer - Bezirksoberliga';
+    const leagueName = 'Männer - Bezirksoberliga MFR';
     const clicked = await page.evaluate((name) => {
       const elements = Array.from(document.querySelectorAll('a, span, li')).filter(el => el.textContent.trim() === name);
       if (elements.length === 0) return false;
