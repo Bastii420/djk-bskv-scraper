@@ -18,7 +18,7 @@ const KLUB_NUMMER = '10009-001';
 // 2. ZU SCRAPENDE LIGEN
 // Kommt aus season-config.js, damit die Mannschaften nur noch an einer Stelle
 // pro Saison gepflegt werden müssen.
-const LEAGUES = seasonConfig.teams.map(team => team.leagueName);
+const LEAGUES = [...new Set(seasonConfig.teams.map(team => team.leagueName))];
 
 const TARGET_URL = 'https://bskv.sportwinner.de/';
 const OUTPUT_FILE = path.join(__dirname, 'bskv_data.json'); 
